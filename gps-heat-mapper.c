@@ -9,17 +9,22 @@
 #define I2C_SDA 8
 #define I2C_SCL 9
 
-
 // UART defines
 #define UART_ID uart1
 #define BAUD_RATE 115200
 
+// Pins for GPS module
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
 
 char line[MINMEA_MAX_SENTENCE_LENGTH];
 
-int main(){
+typedef struct {
+    uint32_t loc_id;
+    uint16_t count;
+} Heatmap;
+
+void main(){
     stdio_init_all();
 
     i2c_init(I2C_PORT, 400*1000);
@@ -28,7 +33,7 @@ int main(){
     gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
     gpio_pull_up(I2C_SDA);
     gpio_pull_up(I2C_SCL);
-    
+
     uart_init(UART_ID, 9600);
     gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
     gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
@@ -46,12 +51,10 @@ int main(){
                 if (minmea_sentence_id(line, false) == MINMEA_SENTENCE_RMC) {
                     struct minmea_sentence_rmc frame;
                     if (minmea_parse_rmc(&frame, line)) {
-                        printf("Lat: %f, Lon: %f\n",
-                               minmea_tocoord(&frame.latitude),
-                               minmea_tocoord(&frame.longitude));
+                        printf("Lat: %f, Lon: %f\n", minmea_tocoord(&frame.latitude), minmea_tocoord(&frame.longitude));
                     }
                 }
-            
+
             } else if (idx < sizeof(line) - 1) {
                 line[idx++] = c;
             }

@@ -1,5 +1,3 @@
-# Generated Cmake Pico project file
-
 cmake_minimum_required(VERSION 3.13)
 
 set(CMAKE_C_STANDARD 11)
@@ -33,9 +31,7 @@ project(gps-heat-mapper C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# Add executable. Default name is the project name, version 0.1
-
-add_executable(gps-heat-mapper gps-heat-mapper.c )
+add_executable(gps-heat-mapper gps-heat-mapper.c minmea.c)
 
 pico_set_program_name(gps-heat-mapper "gps-heat-mapper")
 pico_set_program_version(gps-heat-mapper "0.1")
@@ -60,3 +56,5 @@ target_link_libraries(gps-heat-mapper
 
 pico_add_extra_outputs(gps-heat-mapper)
 
+# Needed for Pico 2W to use minmea
+add_definitions(-Dtimegm=mktime)
