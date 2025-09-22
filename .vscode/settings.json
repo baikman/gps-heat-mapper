@@ -39,6 +39,7 @@
     "raspberry-pi-pico.ninjaPath": "${HOME}/.pico-sdk/ninja/v1.12.1/ninja",
     "files.associations": {
         "cyw43_arch.h": "c",
-        "i2c.h": "c"
+        "i2c.h": "c",
+        "stdlib.h": "c"
     }
 }
