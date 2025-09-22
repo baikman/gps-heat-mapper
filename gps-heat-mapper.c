@@ -64,6 +64,13 @@ void build_http_page() {
         (int)strlen(body), body);
 }
 
+// Callback function for ack and closes connection
+// https://www.nongnu.org/lwip/2_1_x/group__tcp__raw.html#ga1596332b93bb6249179f3b89f24bd808
+static err_t http_sent(void *arg, struct tcp_pcb *tpcb, u16_t len) {
+    tcp_close(tpcb);
+    return ERR_OK;
+}
+
 static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
     if (!p) {
         tcp_close(tpcb);
@@ -72,6 +79,12 @@ static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t er
 
     // Copy request data
     char *data = malloc(p->len + 1);
+
+    if (!data) {
+        pbuf_free(p);
+        return ERR_MEM;
+    }
+
     memcpy(data, p->payload, p->len);
     data[p->len] = '\0';
 
@@ -85,11 +98,13 @@ static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t er
     pbuf_free(p);
 
     // Send response
-    tcp_write(tpcb, html_page, sizeof(html_page) - 1, TCP_WRITE_FLAG_COPY);
+    // *** Page did not load on my iPhone (safari) when using sizeof(html_page) - 1, but using strlen(html_page) works
+    // sizeof(html_page) - 1 did work on windows laptop (chrome)
+    tcp_write(tpcb, html_page, strlen(html_page), TCP_WRITE_FLAG_COPY);
     tcp_output(tpcb);
 
     // Close connection after sending
-    tcp_close(tpcb);
+    tcp_sent(tpcb, http_sent);
 
     return ERR_OK;
 }
