@@ -9,18 +9,16 @@
 #include "lwip/timeouts.h"
 #include "dhcpserver.h"
 
-// I2C defines
+// I2C defines for OLED display
 #define I2C_PORT i2c0
 #define I2C_SDA 8
 #define I2C_SCL 9
 
-// UART defines
+// UART defines and pins for GPS module
 #define UART_ID uart1
-#define BAUD_RATE 115200
-
-// Pins for GPS module
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
+#define BAUD_RATE 9600 // Note: Default baudrate for NEO6MV2 is 9600, but this can be increased.
 
 bool led_state = false;
 
@@ -36,12 +34,6 @@ void blink_once(int ms) {
     sleep_ms(ms);
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
     sleep_ms(ms);
-}
-
-void blink_times(int times, int ms) {
-    for (int i = 0; i < times; i++) {
-        blink_once(ms);
-    }
 }
 
 static const char body[] =
@@ -115,19 +107,27 @@ static err_t http_accept(void *arg, struct tcp_pcb *newpcb, err_t err) {
     return ERR_OK;
 }
 
-
 void main(){
     stdio_init_all();
 
+    i2c_init(I2C_PORT, 400*1000);
+    
+    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
+    gpio_pull_up(I2C_SDA);
+    gpio_pull_up(I2C_SCL);
+
+    uart_init(UART_ID, BAUD_RATE);
+    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
+
     if (cyw43_arch_init()) {
-        printf("CYW43 init failed\n");
+        blink_once(100);
         return;
     }
 
-    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1); // ensure off
-
-    // access point or smth
-    cyw43_arch_enable_ap_mode("Pico2W-AP", "12345678", CYW43_AUTH_WPA2_AES_PSK);
+    // Enable AP mode
+    cyw43_arch_enable_ap_mode("GPS-Heatmapper", "314159", CYW43_AUTH_WPA2_AES_PSK);
 
     // Set Pico’s AP interface address
     ip4_addr_t ipaddr, netmask, gw;
@@ -138,7 +138,7 @@ void main(){
 
     build_http_page();
     
-    // dhcp init type beat
+    // DHCP Initialization
     static dhcp_server_t dhcp;
     dhcp_server_init(&dhcp, &ipaddr, &netmask);
 
@@ -147,27 +147,13 @@ void main(){
     tcp_bind(pcb, IP_ADDR_ANY, 80);
     pcb = tcp_listen(pcb);
     tcp_accept(pcb, http_accept);
+    
+    int idx = 0;
 
     while (true) {
         cyw43_arch_poll(); // keep Wi-Fi + lwIP alive
         sys_check_timeouts();
-    }
 
-
-    i2c_init(I2C_PORT, 400*1000);
-    
-    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
-    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
-    gpio_pull_up(I2C_SDA);
-    gpio_pull_up(I2C_SCL);
-
-    uart_init(UART_ID, 9600);
-    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
-    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
-
-    int idx = 0;
-
-    while (true) {
         if (uart_is_readable(UART_ID)) {
             char c = uart_getc(UART_ID);
             if (c == '\n') {
