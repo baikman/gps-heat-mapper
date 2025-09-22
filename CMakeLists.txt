@@ -7,7 +7,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
 
-# == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
+# == DO not EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
 if(WIN32)
     set(USERHOME $ENV{USERPROFILE})
 else()
@@ -21,7 +21,7 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-set(PICO_BOARD pico2 CACHE STRING "Board type")
+set(PICO_BOARD pico2_w CACHE STRING "Board type")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
@@ -31,7 +31,7 @@ project(gps-heat-mapper C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-add_executable(gps-heat-mapper gps-heat-mapper.c minmea.c)
+add_executable(gps-heat-mapper gps-heat-mapper.c minmea.c dhcpserver.c dnsserver.c)
 
 pico_set_program_name(gps-heat-mapper "gps-heat-mapper")
 pico_set_program_version(gps-heat-mapper "0.1")
@@ -40,19 +40,17 @@ pico_set_program_version(gps-heat-mapper "0.1")
 pico_enable_stdio_uart(gps-heat-mapper 0)
 pico_enable_stdio_usb(gps-heat-mapper 0)
 
-# Add the standard library to the build
+# Add the needed libraries to the build
 target_link_libraries(gps-heat-mapper
-        pico_stdlib)
+        pico_stdlib
+        hardware_i2c
+        pico_cyw43_arch_lwip_threadsafe_background
+        )
 
 # Add the standard include files to the build
 target_include_directories(gps-heat-mapper PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
 )
-
-# Add any user requested libraries
-target_link_libraries(gps-heat-mapper 
-        hardware_i2c
-        )
 
 pico_add_extra_outputs(gps-heat-mapper)
 

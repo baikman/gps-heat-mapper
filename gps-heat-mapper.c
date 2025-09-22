@@ -1,8 +1,13 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
+#include "pico/cyw43_arch.h"
 #include "hardware/i2c.h"
 #include "hardware/uart.h"
 #include "minmea.h"
+#include "lwip/tcp.h"
+#include "lwip/ip4_addr.h"
+#include "lwip/timeouts.h"
+#include "dhcpserver.h"
 
 // I2C defines
 #define I2C_PORT i2c0
@@ -17,6 +22,8 @@
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
 
+bool led_state = false;
+
 char line[MINMEA_MAX_SENTENCE_LENGTH];
 
 typedef struct {
@@ -24,8 +31,113 @@ typedef struct {
     uint16_t count;
 } Heatmap;
 
+void blink_once(int ms) {
+    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+    sleep_ms(ms);
+    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
+    sleep_ms(ms);
+}
+
+void blink_times(int times, int ms) {
+    for (int i = 0; i < times; i++) {
+        blink_once(ms);
+    }
+}
+
+static const char body[] =
+    "<!DOCTYPE html><html><head><title>Pico 2W</title></head>"
+    "<body><h1>Pico 2W Access Point</h1>"
+    "<form action=\"/toggle\" method=\"get\">"
+    "<button type=\"submit\">Toggle LED</button>"
+    "</form></body></html>";
+
+static char html_page[512]; // large enough buffer
+
+void build_http_page() {
+    snprintf(html_page, sizeof(html_page),
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: text/html\r\n"
+        "Content-Length: %d\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+        "%s",
+        (int)strlen(body), body);
+}
+
+static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
+    if (!p) {
+        tcp_close(tpcb);
+        return ERR_OK;
+    }
+
+    // Copy request data
+    char *data = malloc(p->len + 1);
+    memcpy(data, p->payload, p->len);
+    data[p->len] = '\0';
+
+    // Handle toggle
+    if (strstr(data, "GET /toggle") != NULL) {
+        led_state = !led_state;
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_state);
+    }
+
+    free(data);
+    pbuf_free(p);
+
+    // Send response
+    tcp_write(tpcb, html_page, sizeof(html_page) - 1, TCP_WRITE_FLAG_COPY);
+    tcp_output(tpcb);
+
+    // Close connection after sending
+    tcp_close(tpcb);
+
+    return ERR_OK;
+}
+
+static err_t http_accept(void *arg, struct tcp_pcb *newpcb, err_t err) {
+    tcp_recv(newpcb, http_recv);
+    tcp_arg(newpcb, NULL);
+    return ERR_OK;
+}
+
+
 void main(){
     stdio_init_all();
+
+    if (cyw43_arch_init()) {
+        printf("CYW43 init failed\n");
+        return;
+    }
+
+    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1); // ensure off
+
+    // access point or smth
+    cyw43_arch_enable_ap_mode("Pico2W-AP", "12345678", CYW43_AUTH_WPA2_AES_PSK);
+
+    // Set Pico’s AP interface address
+    ip4_addr_t ipaddr, netmask, gw;
+    IP4_ADDR(&ipaddr, 192,168,4,1);
+    IP4_ADDR(&netmask, 255,255,255,0);
+    IP4_ADDR(&gw, 192,168,4,1);
+    netif_set_addr(&cyw43_state.netif[CYW43_ITF_AP], &ipaddr, &netmask, &gw);
+
+    build_http_page();
+    
+    // dhcp init type beat
+    static dhcp_server_t dhcp;
+    dhcp_server_init(&dhcp, &ipaddr, &netmask);
+
+    // Setup TCP server on port 80
+    struct tcp_pcb *pcb = tcp_new();
+    tcp_bind(pcb, IP_ADDR_ANY, 80);
+    pcb = tcp_listen(pcb);
+    tcp_accept(pcb, http_accept);
+
+    while (true) {
+        cyw43_arch_poll(); // keep Wi-Fi + lwIP alive
+        sys_check_timeouts();
+    }
+
 
     i2c_init(I2C_PORT, 400*1000);
     
