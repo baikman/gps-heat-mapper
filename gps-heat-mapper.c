@@ -17,7 +17,12 @@
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
 
-#define LED_PIN 25
+#include "pico/stdlib.h"
+
+#ifdef CYW43_WL_GPIO_LED_PIN
+#include "pico/cyw43_arch.h"
+#endif
+#define LED_PIN CYW43_WL_GPIO_LED_PIN
 
 char line[MINMEA_MAX_SENTENCE_LENGTH];
 
@@ -31,10 +36,14 @@ void main(){
 
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
+
+    cyw43_arch_init();
+
+
     for (int i = 0; i < 6; i++) {
-        gpio_put(LED_PIN, 1);
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, true);
         sleep_ms(250);
-        gpio_put(LED_PIN, 0);
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, false);
         sleep_ms(250);
     }
 
