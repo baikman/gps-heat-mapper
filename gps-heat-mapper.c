@@ -28,6 +28,11 @@ char buf[3];
 char data[MINMEA_MAX_SENTENCE_LENGTH];
 char line[MINMEA_MAX_SENTENCE_LENGTH];
 
+int coor_ind = 0;
+
+char lat[10000][15];
+char lon[10000][15];
+
 typedef struct {
     uint32_t loc_id;
     uint16_t count;
@@ -38,42 +43,58 @@ bool parse_gga(const char *sentence, char *type) {
     int ind = 3;
     for (ind; ind <= 5; ind++) type[ind - 3] = sentence[ind];
     if (type[0] == 'G' && type[1] == 'G' && type[2] == 'A') {
-        // printf("NMEA: %s\n", sentence);
-        for (int i = 0; i < MINMEA_MAX_SENTENCE_LENGTH; i++) data[0] = '\0';
+        printf("NMEA: %s\n", sentence);
 
         ind++;
         int dind = 0;
-        for (int i = 0; i < MINMEA_MAX_SENTENCE_LENGTH; i++) data[0] = '\0';
+        for (int i = 0; i < MINMEA_MAX_SENTENCE_LENGTH; i++) data[i] = '\0';
 
         while (sentence[ind] != ',') data[dind++] = sentence[ind++];
 
         ind++;
         dind = 0;
-        for (int i = 0; i < MINMEA_MAX_SENTENCE_LENGTH; i++) data[0] = '\0';
+        for (int i = 0; i < MINMEA_MAX_SENTENCE_LENGTH; i++) data[i] = '\0';
 
-        while (sentence[ind] != ',') data[dind++] = sentence[ind++];
-
-        if (data[0] == '\0') {
+        if (sentence[ind] == ',') {
             printf("No data\n");
             return false;
         }
 
+        while (sentence[ind] != ',') {
+            lat[coor_ind][dind] = sentence[ind];
+            data[dind++] = sentence[ind++];
+        }
+
+
         ind++;
-        data[dind++] = sentence[ind++];
+        while (sentence[ind] != ',') {
+            lat[coor_ind][dind] = sentence[ind];
+            data[dind++] = sentence[ind++];
+        }
         printf("Latitude: %s\n", data);
 
         ind++;
         dind = 0;
-        for (int i = 0; i < MINMEA_MAX_SENTENCE_LENGTH; i++) data[0] = '\0';
+        for (int i = 0; i < MINMEA_MAX_SENTENCE_LENGTH; i++) data[i] = '\0';
 
-        while (sentence[ind] != ',') data[dind++] = sentence[ind++];
+        while (sentence[ind] != ',') {
+            lon[coor_ind][dind] = sentence[ind];
+            data[dind++] = sentence[ind++];
+        }
 
         ind++;
-        data[dind++] = sentence[ind++];
+        while (sentence[ind] != ',') {
+            lon[coor_ind][dind] = sentence[ind];
+            data[dind++] = sentence[ind++];
+        }
         printf("Longitude: %s\n", data);
+
+        coor_ind++;
 
         return true;
     }
+
+    else if (type[0] == 'G' && type[1] == 'S' && type[2] == 'V') printf("NMEA: %s\n", sentence);
     return false;
 }
 
