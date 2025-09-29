@@ -22,11 +22,14 @@
 
 bool led_state = false;
 
-#define LED_PIN CYW43_WL_GPIO_LED_PIN
-
 char buf[3];
 char data[MINMEA_MAX_SENTENCE_LENGTH];
 char line[MINMEA_MAX_SENTENCE_LENGTH];
+
+int coor_ind = 0;
+
+char lat[10000][15];
+char lon[10000][15];
 
 typedef struct {
     uint32_t loc_id;
@@ -111,6 +114,67 @@ static err_t http_accept(void *arg, struct tcp_pcb *newpcb, err_t err) {
     return ERR_OK;
 }
 
+bool parse_gga(const char *sentence, char *type) {
+    build_http_page(line);
+    
+    int ind = 3;
+    for (ind; ind <= 5; ind++) type[ind - 3] = sentence[ind];
+    if (type[0] == 'G' && type[1] == 'G' && type[2] == 'A') {
+        printf("NMEA: %s\n", sentence);
+
+        ind++;
+        int dind = 0;
+        for (int i = 0; i < MINMEA_MAX_SENTENCE_LENGTH; i++) data[i] = '\0';
+
+        while (sentence[ind] != ',') data[dind++] = sentence[ind++];
+
+        ind++;
+        dind = 0;
+        for (int i = 0; i < MINMEA_MAX_SENTENCE_LENGTH; i++) data[i] = '\0';
+
+        if (sentence[ind] == ',') {
+            printf("No data\n");
+            return false;
+        }
+
+        while (sentence[ind] != ',') {
+            lat[coor_ind][dind] = sentence[ind];
+            data[dind++] = sentence[ind++];
+        }
+
+
+        ind++;
+        while (sentence[ind] != ',') {
+            lat[coor_ind][dind] = sentence[ind];
+            data[dind++] = sentence[ind++];
+        }
+        printf("Latitude: %s\n", data);
+
+        ind++;
+        dind = 0;
+        for (int i = 0; i < MINMEA_MAX_SENTENCE_LENGTH; i++) data[i] = '\0';
+
+        while (sentence[ind] != ',') {
+            lon[coor_ind][dind] = sentence[ind];
+            data[dind++] = sentence[ind++];
+        }
+
+        ind++;
+        while (sentence[ind] != ',') {
+            lon[coor_ind][dind] = sentence[ind];
+            data[dind++] = sentence[ind++];
+        }
+        printf("Longitude: %s\n", data);
+
+        coor_ind++;
+
+        return true;
+    }
+
+    else if (type[0] == 'G' && type[1] == 'S' && type[2] == 'V') printf("NMEA: %s\n", sentence);
+    return false;
+}
+
 void main(){
     stdio_init_all();
 
@@ -164,14 +228,7 @@ void main(){
                 line[idx] = '\0';
                 idx = 0;
                 
-                printf("NMEA: %s\n", line);
-                if (minmea_sentence_id(line, false) == MINMEA_SENTENCE_RMC) {
-                    struct minmea_sentence_rmc frame;
-                    if (minmea_parse_rmc(&frame, line)) {
-                        build_http_page(line);
-                        printf("Lat: %f, Lon: %f\n", minmea_tocoord(&frame.latitude), minmea_tocoord(&frame.longitude));
-                    }
-                }
+                parse_gga(line, buf);
 
             } else if (idx < sizeof(line) - 1) {
                 line[idx++] = c;
