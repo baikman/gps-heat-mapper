@@ -22,6 +22,10 @@
 
 bool led_state = false;
 
+#define LED_PIN CYW43_WL_GPIO_LED_PIN
+
+char buf[3];
+char data[MINMEA_MAX_SENTENCE_LENGTH];
 char line[MINMEA_MAX_SENTENCE_LENGTH];
 
 typedef struct {
@@ -45,7 +49,7 @@ static const char body[] =
 
 static char html_page[512]; // large enough buffer
 
-void build_http_page() {
+void build_http_page(char *msg) {
     snprintf(html_page, sizeof(html_page),
         "HTTP/1.1 200 OK\r\n"
         "Content-Type: text/html\r\n"
@@ -53,7 +57,7 @@ void build_http_page() {
         "Connection: close\r\n"
         "\r\n"
         "%s",
-        (int)strlen(body), body);
+        (int)strlen(msg), msg);
 }
 
 // Callback function for ack and closes connection
@@ -127,7 +131,7 @@ void main(){
     }
 
     // Enable AP mode
-    cyw43_arch_enable_ap_mode("GPS-Heatmapper", "314159", CYW43_AUTH_WPA2_AES_PSK);
+    cyw43_arch_enable_ap_mode("GPS-Heatmapper", "12345678", CYW43_AUTH_WPA2_AES_PSK);
 
     // Set Pico’s AP interface address
     ip4_addr_t ipaddr, netmask, gw;
@@ -136,7 +140,7 @@ void main(){
     IP4_ADDR(&gw, 192,168,4,1);
     netif_set_addr(&cyw43_state.netif[CYW43_ITF_AP], &ipaddr, &netmask, &gw);
 
-    build_http_page();
+    build_http_page(body);
     
     // DHCP Initialization
     static dhcp_server_t dhcp;
@@ -164,6 +168,7 @@ void main(){
                 if (minmea_sentence_id(line, false) == MINMEA_SENTENCE_RMC) {
                     struct minmea_sentence_rmc frame;
                     if (minmea_parse_rmc(&frame, line)) {
+                        build_http_page(line);
                         printf("Lat: %f, Lon: %f\n", minmea_tocoord(&frame.latitude), minmea_tocoord(&frame.longitude));
                     }
                 }

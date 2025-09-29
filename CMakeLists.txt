@@ -37,8 +37,8 @@ pico_set_program_name(gps-heat-mapper "gps-heat-mapper")
 pico_set_program_version(gps-heat-mapper "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(gps-heat-mapper 0)
-pico_enable_stdio_usb(gps-heat-mapper 0)
+pico_enable_stdio_uart(gps-heat-mapper 1)
+pico_enable_stdio_usb(gps-heat-mapper 1)
 
 # Add the needed libraries to the build
 target_link_libraries(gps-heat-mapper
@@ -46,6 +46,10 @@ target_link_libraries(gps-heat-mapper
         hardware_i2c
         pico_cyw43_arch_lwip_threadsafe_background
         )
+
+if (PICO_CYW43_SUPPORTED)
+    target_link_libraries(gps-heat-mapper pico_cyw43_arch_none)
+endif()
 
 # Add the standard include files to the build
 target_include_directories(gps-heat-mapper PRIVATE

@@ -38,8 +38,8 @@
     "raspberry-pi-pico.cmakePath": "${HOME}/.pico-sdk/cmake/v3.31.5/bin/cmake",
     "raspberry-pi-pico.ninjaPath": "${HOME}/.pico-sdk/ninja/v1.12.1/ninja",
     "files.associations": {
-        "uart.h": "c",
-        "stdlib.h": "c",
-        "ip4_addr.h": "c"
+        "cyw43_arch.h": "c",
+        "i2c.h": "c",
+        "stdlib.h": "c"
     }
 }
