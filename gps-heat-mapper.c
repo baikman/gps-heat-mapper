@@ -30,6 +30,7 @@ int coor_ind = 0;
 
 char lat[10000][15];
 char lon[10000][15];
+char time[10000][6];
 
 typedef struct {
     uint32_t loc_id;
@@ -62,6 +63,8 @@ void build_http_page(char *msg) {
         "%s",
         (int)strlen(msg), msg);
 }
+
+
 
 // Callback function for ack and closes connection
 // https://www.nongnu.org/lwip/2_1_x/group__tcp__raw.html#ga1596332b93bb6249179f3b89f24bd808
