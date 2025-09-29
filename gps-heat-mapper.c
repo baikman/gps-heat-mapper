@@ -115,7 +115,6 @@ static err_t http_accept(void *arg, struct tcp_pcb *newpcb, err_t err) {
 }
 
 bool parse_gga(const char *sentence, char *type) {
-    build_http_page(line);
     
     int ind = 3;
     for (ind; ind <= 5; ind++) type[ind - 3] = sentence[ind];
@@ -149,6 +148,7 @@ bool parse_gga(const char *sentence, char *type) {
             data[dind++] = sentence[ind++];
         }
         printf("Latitude: %s\n", data);
+        build_http_page(data);
 
         ind++;
         dind = 0;
