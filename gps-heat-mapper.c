@@ -8,6 +8,7 @@
 #include "lwip/ip4_addr.h"
 #include "lwip/timeouts.h"
 #include "dhcpserver.h"
+#include "http_server.h"
 
 // I2C defines for OLED display
 #define I2C_PORT i2c0
@@ -30,19 +31,14 @@ int coor_ind = 0;
 
 char lat[10000][15];
 char lon[10000][15];
-char time[10000][6];
+char tst[10000][10];
+
+char html_page[512]; // large enough buffer
 
 typedef struct {
     uint32_t loc_id;
     uint16_t count;
 } Heatmap;
-
-void blink_once(int ms) {
-    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
-    sleep_ms(ms);
-    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-    sleep_ms(ms);
-}
 
 static const char body[] =
     "<!DOCTYPE html><html><head><title>Pico 2W</title></head>"
@@ -51,70 +47,11 @@ static const char body[] =
     "<button type=\"submit\">Toggle LED</button>"
     "</form></body></html>";
 
-static char html_page[512]; // large enough buffer
-
-void build_http_page(char *msg) {
-    snprintf(html_page, sizeof(html_page),
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: text/html\r\n"
-        "Content-Length: %d\r\n"
-        "Connection: close\r\n"
-        "\r\n"
-        "%s",
-        (int)strlen(msg), msg);
-}
-
-
-
-// Callback function for ack and closes connection
-// https://www.nongnu.org/lwip/2_1_x/group__tcp__raw.html#ga1596332b93bb6249179f3b89f24bd808
-static err_t http_sent(void *arg, struct tcp_pcb *tpcb, u16_t len) {
-    tcp_close(tpcb);
-    return ERR_OK;
-}
-
-static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
-    if (!p) {
-        tcp_close(tpcb);
-        return ERR_OK;
-    }
-
-    // Copy request data
-    char *data = malloc(p->len + 1);
-
-    if (!data) {
-        pbuf_free(p);
-        return ERR_MEM;
-    }
-
-    memcpy(data, p->payload, p->len);
-    data[p->len] = '\0';
-
-    // Handle toggle
-    if (strstr(data, "GET /toggle") != NULL) {
-        led_state = !led_state;
-        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_state);
-    }
-
-    free(data);
-    pbuf_free(p);
-
-    // Send response
-    // *** Page did not load on my iPhone (safari) when using sizeof(html_page) - 1, but using strlen(html_page) works
-    // sizeof(html_page) - 1 did work on windows laptop (chrome)
-    tcp_write(tpcb, html_page, strlen(html_page), TCP_WRITE_FLAG_COPY);
-    tcp_output(tpcb);
-
-    // Close connection after sending
-    tcp_sent(tpcb, http_sent);
-
-    return ERR_OK;
-}
-
-static err_t http_accept(void *arg, struct tcp_pcb *newpcb, err_t err) {
-    tcp_recv(newpcb, http_recv);
-    tcp_arg(newpcb, NULL);
-    return ERR_OK;
+void blink_once(int ms) {
+    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+    sleep_ms(ms);
+    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
+    sleep_ms(ms);
 }
 
 bool parse_gga(const char *sentence, char *type) {
@@ -128,7 +65,10 @@ bool parse_gga(const char *sentence, char *type) {
         int dind = 0;
         for (int i = 0; i < MINMEA_MAX_SENTENCE_LENGTH; i++) data[i] = '\0';
 
-        while (sentence[ind] != ',') data[dind++] = sentence[ind++];
+        while (sentence[ind] != ',') {
+            tst[coor_ind][dind] = sentence[ind];
+            data[dind++] = sentence[ind++];
+        }
 
         ind++;
         dind = 0;
@@ -151,7 +91,6 @@ bool parse_gga(const char *sentence, char *type) {
             data[dind++] = sentence[ind++];
         }
         printf("Latitude: %s\n", data);
-        build_http_page(data);
 
         ind++;
         dind = 0;
@@ -169,6 +108,9 @@ bool parse_gga(const char *sentence, char *type) {
         }
         printf("Longitude: %s\n", data);
 
+        // char msg[100];
+        // snprintf(msg, 100, "Time: %s\nLatitude: %s\nLongitude: %s\n", tst[coor_ind], lat[coor_ind], lon[coor_ind]);
+        build_http_page(data);
         coor_ind++;
 
         return true;
@@ -200,7 +142,7 @@ void main(){
     // Enable AP mode
     cyw43_arch_enable_ap_mode("GPS-Heatmapper", "12345678", CYW43_AUTH_WPA2_AES_PSK);
 
-    // Set Pico’s AP interface address
+    // Set Pico's AP interface address
     ip4_addr_t ipaddr, netmask, gw;
     IP4_ADDR(&ipaddr, 192,168,4,1);
     IP4_ADDR(&netmask, 255,255,255,0);

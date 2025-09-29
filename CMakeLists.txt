@@ -31,7 +31,7 @@ project(gps-heat-mapper C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-add_executable(gps-heat-mapper gps-heat-mapper.c minmea.c dhcpserver.c dnsserver.c)
+add_executable(gps-heat-mapper gps-heat-mapper.c minmea.c dhcpserver.c dnsserver.c http_server.c)
 
 pico_set_program_name(gps-heat-mapper "gps-heat-mapper")
 pico_set_program_version(gps-heat-mapper "0.1")
