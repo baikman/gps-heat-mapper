@@ -6,7 +6,7 @@
 #include "lwip/pbuf.h"
 #include "pico/cyw43_arch.h"
 
-void build_http_page(char *msg) {
+void build_http_page(const char *msg) {
     snprintf(html_page, 512,
         "HTTP/1.1 200 OK\r\n"
         "Content-Type: text/html\r\n"
