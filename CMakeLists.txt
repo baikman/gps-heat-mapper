@@ -47,9 +47,10 @@ target_link_libraries(gps-heat-mapper
         pico_cyw43_arch_lwip_threadsafe_background
         )
 
-if (PICO_CYW43_SUPPORTED)
-    target_link_libraries(gps-heat-mapper pico_cyw43_arch_none)
-endif()
+# See https://forums.raspberrypi.com/viewtopic.php?t=380329
+# if (PICO_CYW43_SUPPORTED)
+#     target_link_libraries(gps-heat-mapper pico_cyw43_arch_none)
+# endif()
 
 # Add the standard include files to the build
 target_include_directories(gps-heat-mapper PRIVATE
