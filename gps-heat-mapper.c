@@ -9,6 +9,7 @@
 #include "lwip/timeouts.h"
 #include "dhcpserver.h"
 #include "http_server.h"
+#include "ssd1306.h"
 
 // I2C defines for OLED display
 #define I2C_PORT i2c0
@@ -108,6 +109,17 @@ bool parse_gga(const char *sentence, char *type) {
         }
         printf("Longitude: %s\n", data);
 
+        ssd1306_clear();
+        
+        uint8_t lat_label[] = "Lat:";
+        uint8_t lon_label[] = "Lon:";
+        
+        ssd1306_write_text(lat_label, 0, 0);
+        ssd1306_write_text((uint8_t*)lat[coor_ind], 0, 5);
+        ssd1306_write_text(lon_label, 7, 0);
+        ssd1306_write_text((uint8_t*)lon[coor_ind], 7, 5);
+        ssd1306_update();
+
         // char msg[100];
         // snprintf(msg, 100, "Time: %s\nLatitude: %s\nLongitude: %s\n", tst[coor_ind], lat[coor_ind], lon[coor_ind]);
         build_http_page(data);
@@ -123,12 +135,14 @@ bool parse_gga(const char *sentence, char *type) {
 void main(){
     stdio_init_all();
 
-    i2c_init(I2C_PORT, 400*1000);
+    // i2c_init(I2C_PORT, 400*1000);
     
-    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
-    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
-    gpio_pull_up(I2C_SDA);
-    gpio_pull_up(I2C_SCL);
+    // gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
+    // gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
+    // gpio_pull_up(I2C_SDA);
+    // gpio_pull_up(I2C_SCL);
+
+    ssd1306_init(I2C_PORT, I2C_SDA, I2C_SCL, SSD1306_I2C_ADDR);
 
     uart_init(UART_ID, BAUD_RATE);
     gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
